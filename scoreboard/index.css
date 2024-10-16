@@ -1,0 +1,42 @@
+body {
+    margin: 0;
+    background-color:rgb(52, 58, 91);
+}
+
+.container {
+    display: flex;
+    justify-content: space-around;
+
+}
+
+h3 {
+    font-size: xx-large;
+}
+
+button {
+    margin: 5px;
+    width: 50px;
+    height: 30px;
+    background-color: rgb(52, 58, 91);
+    border: 2px solid white;
+    color: white;
+}
+
+button:hover {
+    background-color: wheat;
+}
+
+#timer {
+    color: red
+}
+
+.score {
+    display: flex;
+    width: 400px;
+    height: 300px;
+    color: red;
+    justify-content: center;
+    align-items: center;
+    background-color: black;
+}
+
