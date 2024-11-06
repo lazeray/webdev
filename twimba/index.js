@@ -1,10 +1,38 @@
 import { tweetsData } from './data.js'
 import { v4 as uuidv4 } from 'https://jspm.dev/uuid';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js"
+import { getDatabase,
+         ref,
+         push,
+         onValue,
+         remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js"
+
+const firebaseConfig = {
+    databaseURL: "https://leads-tracker-app-f6c6c-default-rtdb.firebaseio.com/"
+}
+
+
+
+const app = initializeApp(firebaseConfig)
+const database = getDatabase(app)
+const referenceInDB = ref(database, "tweetData")
+
+onValue(referenceInDB, function(snapshot) {
+    const snapshotDoesExist = snapshot.exists()
+    if (snapshotDoesExist) {
+        const snapshotValues = snapshot.val()
+        const tweetData = Object.values(snapshotValues)
+    }
+})
+
+
+
 
 let myHandle = `@laze`
 let myProfile = `images/laze.png`
 
 document.addEventListener('click', function(e){
+    
     if(e.target.dataset.like){
        handleLikeClick(e.target.dataset.like) 
     }
@@ -12,6 +40,7 @@ document.addEventListener('click', function(e){
         handleRetweetClick(e.target.dataset.retweet)
     }
     else if(e.target.dataset.reply){
+        console.log("reply clicked!")
         handleReplyClick(e.target.dataset.reply)
     }
     else if(e.target.id === 'tweet-btn'){
@@ -25,7 +54,6 @@ document.addEventListener('click', function(e){
 document.addEventListener('keydown', function(e){
     if(e.key === 'Enter'){
         e.preventDefault();
-        e.stopPropagation();
         if(e.target.dataset.tweetReply){
             console.log
             handleTweetReply(e.target.dataset.tweetReply, e.target.value)
@@ -33,6 +61,7 @@ document.addEventListener('keydown', function(e){
         e.target.value = ""
     }
 })
+
 function handleTweetReply(tweetId, tweetContent){
     if(tweetContent !== ""){
         
@@ -44,16 +73,20 @@ function handleTweetReply(tweetId, tweetContent){
         const targetTweetObj = tweetsData.filter(function(tweet){
             return tweet.uuid === tweetId
         })[0]
-
+        
         targetTweetObj.replies = targetTweetObj.replies.concat(replyContent)
+        // update to firebase here?
         render()
-        handleReplyClick(tweetId)
     }
 
 }
 
-function handleReplyClick(replyId){
-    document.getElementById(`replies-${replyId}`).classList.toggle('hidden')
+function handleReplyClick(tweetId){
+    const targetTweetObj = tweetsData.filter(function(tweet){
+        return tweet.uuid === tweetId
+    })[0]
+    targetTweetObj.isHidden = !targetTweetObj.isHidden
+    render()
 }
 
 function handleRemoveClick(tweetId){
@@ -105,6 +138,7 @@ function handleTweetBtnClick(){
             replies: [],
             isLiked: false,
             isRetweeted: false,
+            isHidden: true,
             uuid: uuidv4()
         })
     render()
@@ -152,7 +186,10 @@ function getFeedHtml(){
         if(tweet.handle === myHandle){
             buttonhtml = `<button class="delete-btn" data-remove="${tweet.uuid}">X</button>`
         }
-          
+        let isHidden = ""
+        if(tweet.isHidden === true){
+            isHidden = "hidden"
+        }
         feedHtml += `
 <div class="tweet">
     <div class="tweet-inner">
@@ -185,7 +222,7 @@ function getFeedHtml(){
             </div>   
         </div>            
     </div>
-    <div class="hidden" id="replies-${tweet.uuid}">
+    <div class="${isHidden}" id="replies-${tweet.uuid}">
         ${repliesHtml}
     </div>   
 </div>
