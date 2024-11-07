@@ -1,10 +1,12 @@
 import { tweetsData } from './data.js'
 import { v4 as uuidv4 } from 'https://jspm.dev/uuid';
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js"
 import { getDatabase,
          ref,
          push,
          onValue,
+         set,
          remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js"
 
 const firebaseConfig = {
@@ -15,18 +17,41 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 const database = getDatabase(app)
-const referenceInDB = ref(database, "tweetData")
-
-onValue(referenceInDB, function(snapshot) {
-    const snapshotDoesExist = snapshot.exists()
-    if (snapshotDoesExist) {
-        const snapshotValues = snapshot.val()
-        const tweetData = Object.values(snapshotValues)
-    }
-})
 
 
+const tweetsDataRef = ref(database, "tweetsData");
+let tweetsArray = []
+onValue(tweetsDataRef, (snapshot) => {
+    const tweetsData = snapshot.val();
+    tweetsArray = tweetsData ? Object.values(tweetsData) : [];
+    render()
+});
 
+function getTweet(tweetId){
+    const targetTweetObj = tweetsArray.filter(function(tweet){ // fixme?
+        return tweet.uuid === tweetId
+    })[0]
+    return targetTweetObj
+}
+
+function updateTweet(tweetId, tweetObj){ 
+    const tweetKey = `tweetsData/${tweetId}`;
+    const tweetRef = ref(database, tweetKey);
+    set(tweetRef, tweetObj)
+}
+
+function addTweet(tweetId, tweetObj){ // This actually does the same thing as updateTweet lol
+    const tweetKey = `tweetsData/${tweetId}`;
+    const dataRef = ref(database, tweetKey);
+    set(dataRef, tweetObj)
+    
+}
+
+function removeTweet(tweetId){
+    const tweetKey = `tweetsData/${tweetId}`;
+    const tweetRef = ref(database, tweetKey);
+    remove(tweetRef)
+}
 
 let myHandle = `@laze`
 let myProfile = `images/laze.png`
@@ -70,33 +95,32 @@ function handleTweetReply(tweetId, tweetContent){
         profilePic: myProfile,
         tweetText: tweetContent
         }
-        const targetTweetObj = tweetsData.filter(function(tweet){
-            return tweet.uuid === tweetId
-        })[0]
+        const targetTweetObj = getTweet(tweetId)
         
-        targetTweetObj.replies = targetTweetObj.replies.concat(replyContent)
-        // update to firebase here?
+        targetTweetObj.replies = targetTweetObj.replies.concat(replyContent) // UPDATE tweetsData/tweet replies
         render()
     }
 
 }
 
+
+
 function handleReplyClick(tweetId){
     const targetTweetObj = tweetsData.filter(function(tweet){
         return tweet.uuid === tweetId
     })[0]
-    targetTweetObj.isHidden = !targetTweetObj.isHidden
+    targetTweetObj.isHidden = !targetTweetObj.isHidden // Update tweetsData/tweet isHidden
     render()
 }
 
 function handleRemoveClick(tweetId){
     const index = tweetsData.findIndex(tweet => tweet.uuid === tweetId)
-    tweetsData.splice(index, 1)
+    tweetsData.splice(index, 1) // remove(tweet)
     render()
 }
 
 function handleLikeClick(tweetId){ 
-    const targetTweetObj = tweetsData.filter(function(tweet){
+    const targetTweetObj = tweetsData.filter(function(tweet){ // write a function for me!
         return tweet.uuid === tweetId
     })[0]
 
@@ -104,9 +128,9 @@ function handleLikeClick(tweetId){
         targetTweetObj.likes--
     }
     else{
-        targetTweetObj.likes++ 
+        targetTweetObj.likes++
     }
-    targetTweetObj.isLiked = !targetTweetObj.isLiked
+    targetTweetObj.isLiked = !targetTweetObj.isLiked // Update tweetsData/tweet isLiked, likes
     render()
 }
 
@@ -121,7 +145,7 @@ function handleRetweetClick(tweetId){
     else{
         targetTweetObj.retweets++
     }
-    targetTweetObj.isRetweeted = !targetTweetObj.isRetweeted
+    targetTweetObj.isRetweeted = !targetTweetObj.isRetweeted // Update tweetsData/tweet isRetweeted
     render() 
 }
 
@@ -129,7 +153,7 @@ function handleTweetBtnClick(){
     const tweetInput = document.getElementById('tweet-input')
 
     if(tweetInput.value){
-        tweetsData.unshift({
+        tweetsData.unshift({ // push(tweet)
             handle: myHandle,
             profilePic: myProfile,
             likes: 0,
@@ -150,7 +174,7 @@ function handleTweetBtnClick(){
 function getFeedHtml(){
     let feedHtml = ``
     
-    tweetsData.forEach(function(tweet){
+    tweetsArray.forEach(function(tweet){ // check me!
         
         let likeIconClass = ''
         
