@@ -10,24 +10,25 @@ import { getDatabase,
          remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js"
 
 const firebaseConfig = {
-    databaseURL: "https://leads-tracker-app-f6c6c-default-rtdb.firebaseio.com/"
+    databaseURL: "https://twimba-99cdf-default-rtdb.firebaseio.com/"
 }
 
 
 
 const app = initializeApp(firebaseConfig)
 const database = getDatabase(app)
-
-
 const tweetsDataRef = ref(database, "tweetsData");
+
 let tweetsArray = []
 onValue(tweetsDataRef, (snapshot) => {
     const tweetsData = snapshot.val();
     tweetsArray = tweetsData ? Object.values(tweetsData) : [];
+    console.log(tweetsArray)
     render()
 });
 
 function getTweet(tweetId){
+
     const targetTweetObj = tweetsArray.filter(function(tweet){ // fixme?
         return tweet.uuid === tweetId
     })[0]
@@ -79,26 +80,32 @@ document.addEventListener('click', function(e){
 document.addEventListener('keydown', function(e){
     if(e.key === 'Enter'){
         e.preventDefault();
+        console.log("!!!")
         if(e.target.dataset.tweetReply){
-            console.log
             handleTweetReply(e.target.dataset.tweetReply, e.target.value)
         }
+
         e.target.value = ""
     }
 })
 
-function handleTweetReply(tweetId, tweetContent){
-    if(tweetContent !== ""){
-        
+function handleTweetReply(tweetId, replyText){
+    if(replyText !== ""){
+        // console.log("!!!")
         let replyContent = {
-        handle: myHandle,
-        profilePic: myProfile,
-        tweetText: tweetContent
+            handle: myHandle,
+            profilePic: myProfile,
+            tweetText: replyText
         }
-        const targetTweetObj = getTweet(tweetId)
+        const targetTweetObj = tweetsArray.filter(function(tweet){
+            return tweet.uuid === tweetId
+        })[0]
+        // console.log(targetTweetObj)
+        targetTweetObj.replies = targetTweetObj.replies.concat(replyContent)
+        updateTweet(tweetId, targetTweetObj)
         
-        targetTweetObj.replies = targetTweetObj.replies.concat(replyContent) // UPDATE tweetsData/tweet replies
-        render()
+        // UPDATE tweetsData/tweet replies
+        //render()
     }
 
 }
@@ -106,21 +113,23 @@ function handleTweetReply(tweetId, tweetContent){
 
 
 function handleReplyClick(tweetId){
-    const targetTweetObj = tweetsData.filter(function(tweet){
+    const targetTweetObj = tweetsArray.filter(function(tweet){
         return tweet.uuid === tweetId
     })[0]
-    targetTweetObj.isHidden = !targetTweetObj.isHidden // Update tweetsData/tweet isHidden
+    targetTweetObj.isHidden = !targetTweetObj.isHidden
+    updateTweet(tweetId, targetTweetObj) // Update tweetsData/tweet isHidden
     render()
 }
 
 function handleRemoveClick(tweetId){
-    const index = tweetsData.findIndex(tweet => tweet.uuid === tweetId)
-    tweetsData.splice(index, 1) // remove(tweet)
-    render()
+    //const index = tweetsData.findIndex(tweet => tweet.uuid === tweetId)
+    removeTweet(tweetId)
+    //tweetsData.splice(index, 1) // remove(tweet)
+    //render()
 }
 
 function handleLikeClick(tweetId){ 
-    const targetTweetObj = tweetsData.filter(function(tweet){ // write a function for me!
+    const targetTweetObj = tweetsArray.filter(function(tweet){ // write a function for me!
         return tweet.uuid === tweetId
     })[0]
 
@@ -131,11 +140,13 @@ function handleLikeClick(tweetId){
         targetTweetObj.likes++
     }
     targetTweetObj.isLiked = !targetTweetObj.isLiked // Update tweetsData/tweet isLiked, likes
-    render()
+    updateTweet(tweetId, targetTweetObj)
+    
+    //render()
 }
 
 function handleRetweetClick(tweetId){
-    const targetTweetObj = tweetsData.filter(function(tweet){
+    const targetTweetObj = tweetsArray.filter(function(tweet){
         return tweet.uuid === tweetId
     })[0]
     
@@ -145,27 +156,31 @@ function handleRetweetClick(tweetId){
     else{
         targetTweetObj.retweets++
     }
-    targetTweetObj.isRetweeted = !targetTweetObj.isRetweeted // Update tweetsData/tweet isRetweeted
-    render() 
+    targetTweetObj.isRetweeted = !targetTweetObj.isRetweeted
+    updateTweet(tweetId, targetTweetObj) // Update tweetsData/tweet isRetweeted
+    //render() 
 }
 
 function handleTweetBtnClick(){
     const tweetInput = document.getElementById('tweet-input')
-
     if(tweetInput.value){
-        tweetsData.unshift({ // push(tweet)
+        let tweetId = uuidv4()
+        let tweetObj = { // push(tweet)
             handle: myHandle,
             profilePic: myProfile,
             likes: 0,
             retweets: 0,
             tweetText: tweetInput.value,
-            replies: [],
+            replies: [{
+                content: "skip me" // THIS IS A VERY BAD WORKAROUND FOR FIREBASE NOT STORING EMPTY ARRAYS //FIXME asap
+            }],
             isLiked: false,
             isRetweeted: false,
             isHidden: true,
-            uuid: uuidv4()
-        })
-    render()
+            uuid: tweetId
+        }
+        addTweet(tweetId, tweetObj)
+    //render()
     tweetInput.value = ''
     }
 
@@ -173,9 +188,8 @@ function handleTweetBtnClick(){
 
 function getFeedHtml(){
     let feedHtml = ``
-    
-    tweetsArray.forEach(function(tweet){ // check me!
-        
+    tweetsArray.forEach(function(tweet){
+        console.log(tweet) // check me!
         let likeIconClass = ''
         
         if (tweet.isLiked){
@@ -190,8 +204,8 @@ function getFeedHtml(){
         
         let repliesHtml = ''
         
-        if(tweet.replies.length > 0){
-            tweet.replies.forEach(function(reply){
+        if(tweet.replies.length > 1){
+            tweet.replies.slice(1).forEach(function(reply){ // THIS IS VERY BAD     
                 repliesHtml+=`
 <div class="tweet-reply">
     <div class="tweet-inner">
@@ -229,7 +243,7 @@ function getFeedHtml(){
                     <i class="fa-regular fa-comment-dots"
                     data-reply="${tweet.uuid}"
                     ></i>
-                    ${tweet.replies.length}
+                    ${tweet.replies.length - 1 /*holy fk this is bad*/}
                 </span>
                 <span class="tweet-detail">
                     <i class="fa-solid fa-heart ${likeIconClass}"
@@ -259,5 +273,6 @@ function render(){
     document.getElementById('feed').innerHTML = getFeedHtml()
 }
 
-render()
 
+
+render()
