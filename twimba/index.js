@@ -12,7 +12,14 @@ const firebaseConfig = {
     databaseURL: "https://twimba-99cdf-default-rtdb.firebaseio.com/"
 }
 
-
+/*
+possible improvements:
+only update sections of memory rather than whole tweet object
+Login screen? (this seems hard)
+graceful handling of multiple people at once
+store isHidden using a local variable
+legit deployement
+*/
 
 const app = initializeApp(firebaseConfig)
 const database = getDatabase(app)
